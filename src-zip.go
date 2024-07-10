@@ -24,7 +24,7 @@ func check(e error, message string, panickedAF bool) {
 	}
 }
 
-func createIgnoreSetFromFile(filepath string) mapset.Set[string] {
+func createIgnoreSet(filepath string) mapset.Set[string] {
 	ignoreFile, err := os.Open(filepath)
 	check(err, "couldn't open file", true)
 	defer ignoreFile.Close()
@@ -35,9 +35,11 @@ func createIgnoreSetFromFile(filepath string) mapset.Set[string] {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
-		if line != "" && !strings.HasPrefix(line, "#") {
-			ignoreSet.Add(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
+
+		ignoreSet.Add(line)
 	}
 
 	return ignoreSet
@@ -109,7 +111,7 @@ func ignoreMe(ignoreSet mapset.Set[string], path string) bool {
 
 func main() {
 
-	ignoreSet := createIgnoreSetFromFile(".gitignore")
+	ignoreSet := createIgnoreSet(".gitignore")
 
 	source := "zipmeup"
 	target := source + ".zip"
