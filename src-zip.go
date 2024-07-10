@@ -54,9 +54,18 @@ func compressFolder(source string, target string, ignoreSet mapset.Set[string]) 
 	err = filepath.WalkDir(source, func(path string, d fs.DirEntry, err error) error {
 		check(err, "couldn't walk path", true)
 
-		if d.IsDir() {
-			return nil
-		}
+		log.Printf("path: %s\n", path)
+
+		if d.IsDir() && ignoreMe(ignoreSet, path) {
+			return filepath.SkipDir
+		} else if d.IsDir(){
+			return nil;
+		} 
+		
+
+		if ignoreMe(ignoreSet, d.Name()) {
+			return nil;
+		} 
 
 		info, err := d.Info()
 		check(err, "couldn't get file info", true)
@@ -83,10 +92,25 @@ func compressFolder(source string, target string, ignoreSet mapset.Set[string]) 
 	check(err, "couldn't compress file", false)
 }
 
+func ignoreMe(ignoreSet mapset.Set[string], path string) bool {
+
+	for _, ignorePattern := range ignoreSet.ToSlice() {
+		log.Printf("\tignorePattern: %s\n", ignorePattern)
+		
+		matched, err := filepath.Match(ignorePattern, path)
+		check(err, "couldn't match path", true)
+		if matched {
+			log.Printf("\t\tmatched: %s\n", path)
+			return true
+		}
+	}
+
+	return false
+}
+
 func main() {
 
 	ignoreSet := createIgnoreSetFromFile(".gitignore")
-	log.Printf("ignoreSet: %s\n", ignoreSet)
 
 	source := "zipmeup"
 	target := source + ".zip"
