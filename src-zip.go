@@ -58,14 +58,13 @@ func compressFolder(source string, target string, ignoreSet mapset.Set[string]) 
 
 		if d.IsDir() && ignoreMe(ignoreSet, path) {
 			return filepath.SkipDir
-		} else if d.IsDir(){
-			return nil;
-		} 
-		
+		} else if d.IsDir() {
+			return nil
+		}
 
 		if ignoreMe(ignoreSet, d.Name()) {
-			return nil;
-		} 
+			return nil
+		}
 
 		info, err := d.Info()
 		check(err, "couldn't get file info", true)
@@ -96,7 +95,7 @@ func ignoreMe(ignoreSet mapset.Set[string], path string) bool {
 
 	for _, ignorePattern := range ignoreSet.ToSlice() {
 		log.Printf("\tignorePattern: %s\n", ignorePattern)
-		
+
 		matched, err := filepath.Match(ignorePattern, path)
 		check(err, "couldn't match path", true)
 		if matched {
