@@ -8,16 +8,18 @@ import (
 	"strings"
 )
 
-func check(e error) {
+func check(e error, message string, panickedAF bool) {
 	if e != nil {
-		log.Fatalf("Error: %s\n", e)
-		panic(e)
+		log.Fatalf("%s: %s\n", message, e)
+		if panickedAF {
+			panic(e)
+		}
 	}
 }
 
 func createIgnoreSetFromFile(filepath string) mapset.Set[string] {
 	ignoreFile, err := os.Open(filepath)
-	check(err)
+	check(err, "couldn't open file", true)
 
 	scanner := bufio.NewScanner(ignoreFile)
 	ignoreSet := mapset.NewSet[string]()
