@@ -42,3 +42,5 @@ GOCACHE
 
 # Go test caches
 *.t
+
+zipmeup*
