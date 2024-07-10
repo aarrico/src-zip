@@ -20,7 +20,8 @@ func check(e error, message string, panickedAF bool) {
 func createIgnoreSetFromFile(filepath string) mapset.Set[string] {
 	ignoreFile, err := os.Open(filepath)
 	check(err, "couldn't open file", true)
-
+	defer ignoreFile.Close()
+	
 	scanner := bufio.NewScanner(ignoreFile)
 	ignoreSet := mapset.NewSet[string]()
 
@@ -31,8 +32,6 @@ func createIgnoreSetFromFile(filepath string) mapset.Set[string] {
 			ignoreSet.Add(line)
 		}
 	}
-
-	ignoreFile.Close()
 
 	return ignoreSet
 }
