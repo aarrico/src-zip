@@ -7,10 +7,15 @@ A CLI compression tool for source code folders. It uses `.gitignore` when buildi
 It is currently in very early stages. Building out core functionality before turning into a CLI.
 
 Current state:
-- compresses a folder with a top level `.gitignore`
+- compresses a folder with nested `.gitignore` files, but does not recursively consider higher level ignores.
 
 In Progress:
-- consider nested `.gitignore` files
+- recursively add to the ignore set when digging deeper into the tree.
+
+Todo:
+- support tar.gz compression
+- add proper CLI
+- support ignore files by command line, `$GIT_DIR/info/exclude`, and env var `core.excludesFile`
 
 ## Run
 
