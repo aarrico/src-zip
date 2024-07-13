@@ -23,10 +23,12 @@ Built with Go 1.22.5.
 
 To install dependencies, from the root of the repo run
 ```sh
-go get .
+go get . 
 ```
 
-To run
+To run, specificy the path to the directory, absolute or relative.
 ```sh
-go run .
+go run . {path_to_dir}
 ```
+
+The zip will be created in the parent of specified directory alongside it.
