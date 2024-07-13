@@ -93,17 +93,28 @@ func ignoreMe(ignoreSet mapset.Set[string], path string) bool {
 	return false
 }
 
-func compressDir(source string, target string, dirToCompress string) {
-	zipFile, err := os.Create(target)
-	check(err, "couldn't create zip file", true)
-	defer zipFile.Close()
+func compressFile(path string, d fs.DirEntry, compressWriter *zip.Writer, dirToCompress string) error {
+	info, err := d.Info()
 
-	compressWriter := zip.NewWriter(zipFile)
-	defer compressWriter.Close()
+	check(err, "couldn't get file info", true)
 
-	walkDir(source, nil, compressWriter, dirToCompress)
+	header, err := zip.FileInfoHeader(info)
+	check(err, "couldn't create compression header", true)
 
-	check(err, "couldn't compress file", false)
+	header.Method = zip.Deflate
+	header.Name = filepath.Join(dirToCompress, d.Name())
+
+	log.Printf("\t\theader path: %s\n", header.Name)
+
+	headerWriter, err := compressWriter.CreateHeader(header)
+	check(err, "couldn't create header", false)
+
+	file, err := os.Open(path)
+	check(err, "couldn't open file", false)
+	defer file.Close()
+
+	_, err = io.Copy(headerWriter, file)
+	return err
 }
 
 func walkDir(
@@ -121,7 +132,8 @@ func walkDir(
 		func(d fs.DirEntry) bool { return d.Name() == ".gitignore" })
 	ignorePath := filepath.Join(source, ".gitignore")
 
-	log.Printf("\tcreating ignore set from: %s\n\tmerging: %t", ignorePath, ignoreSet != nil)
+	log.Printf("\tcreating ignore set from: %s\n", ignorePath)
+	log.Printf("\t\tmerging: %t\n", ignoreSet != nil)
 	if ignoreFileExists {
 		ignoreSet = getIgnoreSetFromFile(ignorePath, ignoreSet)
 	}
@@ -148,28 +160,17 @@ func walkDir(
 	return nil
 }
 
-func compressFile(path string, d fs.DirEntry, compressWriter *zip.Writer, dirToCompress string) error {
-	info, err := d.Info()
+func compressDir(source string, target string, dirToCompress string) {
+	zipFile, err := os.Create(target)
+	check(err, "couldn't create zip file", true)
+	defer zipFile.Close()
 
-	check(err, "couldn't get file info", true)
+	compressWriter := zip.NewWriter(zipFile)
+	defer compressWriter.Close()
 
-	header, err := zip.FileInfoHeader(info)
-	check(err, "couldn't create compression header", true)
+	walkDir(source, nil, compressWriter, dirToCompress)
 
-	header.Method = zip.Deflate
-	header.Name = filepath.Join(dirToCompress, d.Name())
-
-	log.Printf("\t\theader path: %s\n", header.Name)
-
-	headerWriter, err := compressWriter.CreateHeader(header)
-	check(err, "couldn't create header", false)
-
-	file, err := os.Open(path)
-	check(err, "couldn't open file", false)
-	defer file.Close()
-
-	_, err = io.Copy(headerWriter, file)
-	return err
+	check(err, "couldn't compress file", false)
 }
 
 func main() {
