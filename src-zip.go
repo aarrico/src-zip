@@ -25,25 +25,54 @@ func check(e error, message string, panickedAF bool) {
 	}
 }
 
-func createIgnoreSet(filepath string) mapset.Set[string] {
+// creates the data structure to hold the ignore patterns;
+// will clone the merge set if it exists
+func createIgnoreSet(mergeSet mapset.Set[string]) mapset.Set[string] {
+	if mergeSet != nil {
+		return mergeSet.Clone()
+	}
+
+	return mapset.NewSet[string]()
+}
+
+// logic to parse each line of the file and add it to the set;
+// if a negation pattern is found, remove it from the set
+func processIgnoreFile(ignoreFile *os.File, ignoreSet mapset.Set[string]) mapset.Set[string] {
+	scanner := bufio.NewScanner(ignoreFile)
+
+	for scanner.Scan() {
+		pattern := strings.TrimSpace(scanner.Text())
+
+		if pattern == "" {
+			continue
+		}
+
+		if strings.HasPrefix(pattern, "#") {
+			continue
+		}
+
+		if strings.HasPrefix(pattern, "!") {
+			negationPattern := pattern[1:]
+			if ignoreSet.Contains(negationPattern) {
+				ignoreSet.Remove(negationPattern)
+			}
+			continue
+		}
+
+		ignoreSet.Add(pattern)
+	}
+
+	return ignoreSet
+}
+
+func getIgnoreSetFromFile(filepath string, mergeSet mapset.Set[string]) mapset.Set[string] {
 	ignoreFile, err := os.Open(filepath)
 	check(err, "couldn't open file", true)
 	defer ignoreFile.Close()
 
-	scanner := bufio.NewScanner(ignoreFile)
-	ignoreSet := mapset.NewSet[string]()
+	ignoreSet := createIgnoreSet(mergeSet)
 
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		ignoreSet.Add(line)
-	}
-
-	return ignoreSet
+	return processIgnoreFile(ignoreFile, ignoreSet)
 }
 
 func ignoreMe(ignoreSet mapset.Set[string], path string) bool {
@@ -77,39 +106,42 @@ func compressDir(source string, target string, dirToCompress string) {
 	check(err, "couldn't compress file", false)
 }
 
-func walkDir(source string, ignoreSet mapset.Set[string], compressWriter *zip.Writer, dirToCompress string) error {
+func walkDir(
+	source string,
+	ignoreSet mapset.Set[string],
+	compressWriter *zip.Writer,
+	dirToCompress string) error {
 
 	log.Printf("walking directory: %s\n", source)
 
 	dirContents, err := os.ReadDir(source)
 	check(err, "couldn't read directory", true)
 
-	ignoreFileExists := slices.ContainsFunc(dirContents, func(d fs.DirEntry) bool { return d.Name() == ".gitignore" })
+	ignoreFileExists := slices.ContainsFunc(dirContents,
+		func(d fs.DirEntry) bool { return d.Name() == ".gitignore" })
+	ignorePath := filepath.Join(source, ".gitignore")
 
+	log.Printf("\tcreating ignore set from: %s\n\tmerging: %t", ignorePath, ignoreSet != nil)
 	if ignoreFileExists {
-		log.Printf("\tcreating ignore set\n")
-		ignoreSet = createIgnoreSet(filepath.Join(source, ".gitignore"))
+		ignoreSet = getIgnoreSetFromFile(ignorePath, ignoreSet)
 	}
 
 	for _, entry := range dirContents {
 		path := filepath.Join(source, entry.Name())
 		log.Printf("\tentry: %s\n", path)
 
-		if entry.IsDir() {
-			if !ignoreMe(ignoreSet, entry.Name()) {
-				err = walkDir(path, ignoreSet, compressWriter, filepath.Join(dirToCompress, entry.Name()))
-				check(err, "couldn't walk directory", false)
-			}
-		} else {
-			if ignoreMe(ignoreSet, entry.Name()) {
-				log.Printf("\t\tignoring file: %s\n", entry.Name())
-				continue
-			}
+		if ignoreMe(ignoreSet, entry.Name()) {
+			log.Printf("\t\tignoring entry!\n")
+			continue
+		}
 
+		if entry.IsDir() {
+			err = walkDir(path, ignoreSet, compressWriter, filepath.Join(dirToCompress, entry.Name()))
+			check(err, "couldn't walk directory", false)
+		} else {
 			err = compressFile(path, entry, compressWriter, dirToCompress)
 			check(err, "couldn't compress file", false)
-			log.Printf("\t\tcompressed file: %s\n", entry.Name())
-
+			log.Printf("\t\tcompressed file!\n")
 		}
 	}
 
@@ -123,11 +155,11 @@ func compressFile(path string, d fs.DirEntry, compressWriter *zip.Writer, dirToC
 
 	header, err := zip.FileInfoHeader(info)
 	check(err, "couldn't create compression header", true)
-	
+
 	header.Method = zip.Deflate
 	header.Name = filepath.Join(dirToCompress, d.Name())
 
-	log.Printf("\t\tcompressing file: %s\n", header.Name)
+	log.Printf("\t\theader path: %s\n", header.Name)
 
 	headerWriter, err := compressWriter.CreateHeader(header)
 	check(err, "couldn't create header", false)
@@ -143,8 +175,7 @@ func compressFile(path string, d fs.DirEntry, compressWriter *zip.Writer, dirToC
 func main() {
 
 	source := filepath.Clean(os.Args[1])
-	dirToCompress = filepath.Base(source)
-	pathToDir = filepath.Dir(source)
+	dirToCompress := filepath.Base(source)
 	target := source + ".zip"
 	compressDir(source, target, dirToCompress)
 }
