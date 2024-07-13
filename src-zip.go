@@ -14,9 +14,6 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 )
 
-var dirToCompress string
-var pathToDir string
-
 func check(e error, message string, panickedAF bool) {
 	if e != nil {
 		if panickedAF {
