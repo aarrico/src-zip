@@ -1,4 +1,4 @@
-package main
+package compressdir
 
 import (
 	"archive/zip"
@@ -160,7 +160,7 @@ func walkDir(
 	return nil
 }
 
-func compressDir(source string, target string, dirToCompress string) {
+func CompressDir(source string, target string, dirToCompress string) {
 	zipFile, err := os.Create(target)
 	check(err, "couldn't create zip file", true)
 	defer zipFile.Close()
@@ -171,12 +171,4 @@ func compressDir(source string, target string, dirToCompress string) {
 	walkDir(source, nil, compressWriter, dirToCompress)
 
 	check(err, "couldn't compress file", false)
-}
-
-func main() {
-
-	source := filepath.Clean(os.Args[1])
-	dirToCompress := filepath.Base(source)
-	target := source + ".zip"
-	compressDir(source, target, dirToCompress)
 }
