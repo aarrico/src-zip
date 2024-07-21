@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "compress",
+	Use:   "src-zip [path to src directory]",
 	Short: "src directory compression",
 	Long: `compresses a src directory into a zip file considering the .gitignore file`,
 	Args: cobra.ExactArgs(1),
