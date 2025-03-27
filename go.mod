@@ -2,4 +2,4 @@ module github.com/aarrico/src-zip
 
 go 1.22.5
 
-require github.com/deckarep/golang-set/v2 v2.6.0
+require github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
